@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文本脱敏工具</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f5f5f5; color: #333; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { text-align: center; font-size: 1.8rem; margin-bottom: 6px; }
+        .subtitle { text-align: center; color: #666; font-size: 0.85rem; margin-bottom: 20px; }
+        .panel { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .panel-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 10px; color: #444; display: flex; justify-content: space-between; align-items: center; }
+        textarea { width: 100%; min-height: 120px; border: 1px solid #ddd; border-radius: 6px; padding: 10px; font-size: 0.9rem; resize: vertical; font-family: inherit; line-height: 1.6; }
+        textarea:focus { outline: none; border-color: #2563eb; }
+        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; transition: all 0.15s; }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-primary { background: #2563eb; color: #fff; }
+        .btn-secondary { background: #e5e7eb; color: #374151; }
+        .btn-success { background: #16a34a; color: #fff; }
+        .result-box { background: #fafafa; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; min-height: 80px; white-space: pre-wrap; word-break: break-all; line-height: 1.7; font-size: 0.9rem; }
+        .tag { background: #dbeafe; color: #1e40af; padding: 1px 5px; border-radius: 3px; font-weight: 600; font-size: 0.88em; }
+        .stats { margin-top: 8px; font-size: 0.8rem; color: #666; }
+        .sample { color: #2563eb; cursor: pointer; text-decoration: underline; font-size: 0.8rem; font-weight: normal; }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(80px); background: #333; color: #fff; padding: 8px 18px; border-radius: 6px; opacity: 0; transition: all 0.3s; z-index: 100; font-size: 0.85rem; }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>文本脱敏工具</h1>
+        <p class="subtitle">一键脱敏姓名/邮箱/电话/地址/账号/日期/URL/密钥/身份证等信息——纯本地运行，零上传</br><strong>注意：高敏感内容建议人工复核</strong></p>
+
+        <div class="panel">
+            <div class="panel-title">输入文本 <span class="sample" id="btnSample">加载示例</span></div>
+            <textarea id="input" placeholder="在此粘贴需要脱敏的文本..."></textarea>
+            <div class="btn-group">
+                <button class="btn btn-primary" id="btnProcess">开始脱敏</button>
+                <button class="btn btn-secondary" id="btnClear">清空</button>
+                <button class="btn btn-success" id="btnCopy">复制结果</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">脱敏结果</div>
+            <div class="result-box" id="output"></div>
+            <div class="stats" id="stats"></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var $ = function(id) { return document.getElementById(id); };
+        var toast = function(msg, err) {
+            var t = $('toast'); t.textContent = msg; t.style.background = err ? '#dc2626' : '#333';
+            t.classList.add('show'); setTimeout(function() { t.classList.remove('show'); }, 2000);
+        };
+
+        var SN = '赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦尤许何吕施张孔曹严华金魏陶姜戚谢邹喻柏水窦章云苏潘葛奚范彭郎鲁韦昌马苗凤花方俞任袁柳酆鲍史唐费廉岑薛雷贺倪汤滕殷罗毕郝邬安常乐于时傅皮卞齐康伍余元卜顾孟平黄和穆萧尹姚邵湛汪祁毛禹狄米贝明臧计伏成戴谈宋茅庞熊纪舒屈项祝董梁杜阮蓝闵席季麻强贾路娄危江童颜郭梅盛林刁钟徐邱骆高夏蔡田樊胡凌霍虞万支柯昝管卢莫经房裘缪干解应宗丁宣贲邓郁单杭洪包诸左石崔吉钮龚';
+
+        // 冒号规则：关键词 -> 标签（按长度降序，长的优先）
+        var COLON_RULES = [
+            {key: 'timestamp', tag: '[时间戳]'}, {key: 'Timestamp', tag: '[时间戳]'},
+            {key: 'E-mail', tag: '[邮箱]'}, {key: 'E-Mail', tag: '[邮箱]'}, {key: 'e-mail', tag: '[邮箱]'},
+            {key: 'Token', tag: '[密钥]'}, {key: 'token', tag: '[密钥]'},
+            {key: '联系电话', tag: '[电话]'}, {key: '手机号码', tag: '[电话]'}, {key: '亲属关系', tag: '[关系]'}, {key: '社会关系', tag: '[关系]'},
+            {key: '收货地址', tag: '[地址]'}, {key: '收件地址', tag: '[地址]'}, {key: '居住地址', tag: '[地址]'}, {key: '家庭地址', tag: '[地址]'}, {key: '公司地址', tag: '[地址]'},
+            {key: '客户编号', tag: '[编号]'}, {key: '身份证号', tag: '[身份证]'}, {key: '开户银行', tag: '[开户行]'}, {key: '客户公司', tag: '[公司]'}, {key: '公司名称', tag: '[公司]'},
+            {key: '授权码', tag: '[授权码]'}, {key: '验证码', tag: '[验证码]'}, {key: '校验码', tag: '[验证码]'}, {key: '激活码', tag: '[授权码]'},
+            {key: '时间戳', tag: '[时间戳]'}, {key: 'IP地址', tag: '[IP]'},
+            {key: '姓名', tag: '[姓名]'}, {key: '名字', tag: '[姓名]'}, {key: '联系人', tag: '[姓名]'}, {key: '收件人', tag: '[姓名]'}, {key: '发件人', tag: '[姓名]'}, {key: '负责人', tag: '[姓名]'}, {key: '户名', tag: '[姓名]'},
+            {key: '邮箱', tag: '[邮箱]'}, {key: '邮件', tag: '[邮箱]'},
+            {key: '手机', tag: '[电话]'}, {key: '电话', tag: '[电话]'}, {key: '座机', tag: '[电话]'}, {key: '传真', tag: '[电话]'},
+            {key: '地址', tag: '[地址]'}, {key: '住址', tag: '[地址]'},
+            {key: '编号', tag: '[编号]'}, {key: '订单号', tag: '[编号]'}, {key: '流水号', tag: '[编号]'}, {key: '单号', tag: '[编号]'}, {key: '会员号', tag: '[编号]'}, {key: '工号', tag: '[编号]'}, {key: '学号', tag: '[编号]'}, {key: '批次号', tag: '[编号]'}, {key: '序列号', tag: '[编号]'},
+            {key: '身份证', tag: '[身份证]'},
+            {key: '密钥', tag: '[密钥]'}, {key: '密码', tag: '[密钥]'},
+            {key: '银行卡', tag: '[银行卡]'}, {key: '信用卡', tag: '[银行卡]'}, {key: '借记卡', tag: '[银行卡]'}, {key: '卡号', tag: '[银行卡]'},
+            {key: '开户行', tag: '[开户行]'}, {key: '银行', tag: '[开户行]'},
+            {key: '公司', tag: '[公司]'}, {key: '单位', tag: '[公司]'}, {key: '企业', tag: '[公司]'}, {key: '厂商', tag: '[公司]'}, {key: '供应商', tag: '[公司]'},
+            {key: '职位', tag: '[职位]'}, {key: '职务', tag: '[职位]'}, {key: '岗位', tag: '[职位]'}, {key: '职称', tag: '[职位]'},
+            {key: '关系', tag: '[关系]'},
+            {key: 'IP', tag: '[IP]'}, {key: 'ip', tag: '[IP]'},
+            {key: '网址', tag: '[网址]'}, {key: '网站', tag: '[网址]'}, {key: '链接', tag: '[网址]'}, {key: 'URL', tag: '[网址]'}, {key: 'url', tag: '[网址]'},
+            {key: '日期', tag: '[日期]'}, {key: '时间', tag: '[日期]'}
+        ];
+
+        function maskColonContent(text) {
+            var placeholders = [], phIndex = 0;
+            COLON_RULES.forEach(function(rule) {
+                var pattern = new RegExp('(' + rule.key + '\\s*[:：]\\s*)([^，。；,;\\n]{1,80})(?=[，。；,;\\n]|$)', 'g');
+                text = text.replace(pattern, function(match, g1, g2) {
+                    var ph = '__PH_' + (phIndex++) + '__';
+                    placeholders.push({ph: ph, val: g1 + '<span class="tag">' + rule.tag + '</span>'});
+                    return ph;
+                });
+            });
+            placeholders.forEach(function(p) {
+                text = text.split(p.ph).join(p.val);
+            });
+            return text;
+        }
+
+        function mask(text) {
+            var n, i, j, ch, prev, result, nameLen;
+
+            // 1. 冒号之间的内容直接脱敏
+            text = maskColonContent(text);
+
+            // 2. 百家姓人名（无冒号格式）
+            n = text.length; i = 0; result = [];
+            while (i < n) {
+                ch = text[i];
+                if (SN.indexOf(ch) >= 0) {
+                    prev = i > 0 ? text[i-1] : '';
+                    if (prev === '' || /[，。、；：！？.,;:!?\s]/.test(prev)) {
+                        j = i + 1;
+                        while (j < Math.min(i+4, n) && text[j] >= '\u4e00' && text[j] <= '\u9fa5') j++;
+                        nameLen = j - i;
+                        if (nameLen >= 2 && (j >= n || /[，。、；：！？.,;:!?\s]/.test(text[j]))) {
+                            result.push('<span class="tag">[姓名]</span>');
+                            i = j; continue;
+                        }
+                    }
+                }
+                result.push(ch); i++;
+            }
+            text = result.join('');
+
+            // 3. 其他无冒号格式
+            text = text.replace(/1[3-9]\d{9}\b/g, '<span class="tag">[电话]</span>');
+            text = text.replace(/[\w.%+-]+@[\w.-]+\.[A-Za-z]{2,}/g, '<span class="tag">[邮箱]</span>');
+            text = text.replace(/\d{17}[\dXx]|\d{15}/g, '<span class="tag">[身份证]</span>');
+            text = text.replace(/(?:北京|天津|上海|重庆|(?:[\u4e00-\u9fa5]{2,5}(?:省|市|自治区|州|盟|区|县)))[\u4e00-\u9fa5A-Za-z\d\-]{1,20}(?:路|街|道|巷|大道|大街|中路|东路|西路|南路|北路|弄|里|号|栋|单元|层|室|楼|座|镇|乡|村|街道|社区|小区|大厦|广场|中心|花园|公寓|别墅)[\u4e00-\u9fa5A-Za-z\d\-]{0,20}(?:室|层|单元|号)?/g, '<span class="tag">[地址]</span>');
+            text = text.replace(/\d{16,19}/g, '<span class="tag">[银行卡]</span>');
+            text = text.replace(/\b[A-Z]{2,6}-\d[\d-]{3,}\b/g, '<span class="tag">[编号]</span>');
+            text = text.replace(/\b(?:sk|ak|pk|bk)-[a-zA-Z0-9_-]{8,}\b/g, '<span class="tag">[密钥]</span>');
+            text = text.replace(/\b[a-zA-Z0-9]{16,40}\b/g, '<span class="tag">[授权码]</span>');
+            text = text.replace(/\b(?:25[0-5]|2[0-4]\d|1\d{1,2}|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d{1,2}|[1-9]?\d)){3}\b/g, '<span class="tag">[IP]</span>');
+            text = text.replace(/\d{4}[-/年.]\d{1,2}[-/月.]\d{1,2}[日]?|\d{4}\d{2}\d{2}/g, '<span class="tag">[日期]</span>');
+            text = text.replace(/\b\d{10}\b|\b\d{13}\b/g, '<span class="tag">[时间戳]</span>');
+
+            // 新增：网址脱敏（含 http/https/ftp 协议及纯域名）
+            text = text.replace(/\b(?:https?|ftp):\/\/[^\s，。；,;:!?]+/gi, '<span class="tag">[网址]</span>');
+            text = text.replace(/\b(?:www\.)?[a-zA-Z0-9][-a-zA-Z0-9]*\.(?:com|cn|net|org|io|xyz|top|cc|tv|me|info|biz|co|app|dev|cloud|ai|tech|site|online|store|vip|work|ltd|group|fun|link|pro|red|win|club|wang|mobi|name|asia|travel|museum|aero|jobs|int|edu|gov|mil|arpa|[a-zA-Z]{2,6})(?:\.[a-zA-Z]{2,6})?(?:\/[^\s，。；,;:!?]*)?/gi, '<span class="tag">[网址]</span>');
+
+            return text;
+        }
+
+        $('btnProcess').addEventListener('click', function() {
+            var v = $('input').value;
+            if (!v.trim()) { toast('请先输入文本', true); return; }
+            $('output').innerHTML = mask(v);
+            $('stats').textContent = '文本长度 ' + v.length + ' 字符';
+        });
+
+        $('btnClear').addEventListener('click', function() {
+            $('input').value = ''; $('output').innerHTML = ''; $('stats').textContent = '';
+        });
+
+        $('btnCopy').addEventListener('click', function() {
+            var t = $('output').innerText;
+            if (!t) { toast('没有可复制的内容', true); return; }
+            navigator.clipboard.writeText(t).then(function() { toast('已复制到剪贴板'); });
+        });
+
+        $('btnSample').addEventListener('click', function() {
+    $('input').value = '更多工具尽在忆痕发布页：https://www.937788.xyz/\n\n客户信息登记表（以下信息均为虚构）\n登记日期： 2026年5月01日\n————————————\n【基本信息】\n客户姓名：周小忆\n联系电话：13866668888\n电子邮箱：yihen@example.com\n家庭住址：北京市海淀区中关村大街1号科技大厦A座1205室\n身份证号：11010119900307893X\n————————————\n【账户信息】\n客户编号：CUST-BJ-20260529-8847\n账户密钥：AKIAIOSFODNN7EXAMPLE\nAPI密钥：sk-live-51OoL9EXAMPLE7xJt2KpQr\n银行卡号：6222020200123456789\n开户行：中国工商银行北京海淀支行\n————————————\n【紧急联系人】\n联系人姓名：李芳\n关系：配偶\n电话：13955553333\n工作单位地址：上海市浦东新区陆家嘴环路1000号恒生银行大厦28层\n————————————\n【备注】\n该客户于 2026-05-01 申请开通VIP服务，授权码为 AUTH20268847ABCDEFGH，有效期至 2026-12-31。\n系统日志记录时间戳：2026-05-01 20:51:00';
+    $('output').innerHTML = mask($('input').value);
+    $('stats').textContent = '文本长度 ' + $('input').value.length + ' 字符';
+    });
+
+        document.addEventListener('keydown', function(e) { if (e.ctrlKey && e.key === 'Enter') $('btnProcess').click(); });
+    });
+    </script>
+    <style>
+      .beian-pc{display:flex;justify-content:center;align-items:center;gap:20px}
+      .beian-disclaimer{color:#e74c3c;white-space:nowrap}
+      .beian-icp{color:#333;text-decoration:none;white-space:nowrap}
+      .beian-gongan{display:inline-flex;align-items:center;gap:6px;color:#333;text-decoration:none;white-space:nowrap}
+      .beian-gongan img{width:16px;height:16px}
+      @media(max-width:768px){.beian-pc{display:none}.beian-mobile{display:flex;flex-direction:column;align-items:center;gap:6px}.beian-mobile a,.beian-mobile span{display:block;line-height:1.8}}
+      @media(min-width:769px){.beian-mobile{display:none}}
+    </style>
+    <div class="beian-bar">
+      <div class="beian-pc">
+        <span class="beian-disclaimer"><strong>本站内容仅供学习和交流，非商业用途</strong></span>
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer" class="beian-icp">浙ICP备2025187466号</a>
+        <a href="https://www.beian.gov.cn/portal/registerSystemInfo?recordcode=33030402001483" target="_blank" rel="noopener noreferrer" class="beian-gongan">
+          <img src="https://www.937788.xyz/gonganbeian.png" alt="公安备案" onerror="this.style.display='none'">
+          浙公网安备33030402001483号
+        </a>
+      </div>
+      <div class="beian-mobile">
+        <span class="beian-disclaimer">本站内容仅供学习和交流，非商业用途</span>
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer" class="beian-icp">浙ICP备2025187466号</a>
+        <a href="https://www.beian.gov.cn/portal/registerSystemInfo?recordcode=33030402001483" target="_blank" rel="noopener noreferrer" class="beian-gongan">
+          <img src="https://www.937788.xyz/gonganbeian.png" alt="公安备案" onerror="this.style.display='none'">
+          浙公网安备33030402001483号
+        </a>
+      </div>
+    </div>
+</body>
+</html>
