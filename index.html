@@ -27,6 +27,7 @@
         .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(80px); background: #333; color: #fff; padding: 8px 18px; border-radius: 6px; opacity: 0; transition: all 0.3s; z-index: 100; font-size: 0.85rem; }
         .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     </style>
+<base target="_blank">
 </head>
 <body>
     <div class="container">
@@ -122,8 +123,61 @@
                         while (j < Math.min(i+4, n) && text[j] >= '\u4e00' && text[j] <= '\u9fa5') j++;
                         nameLen = j - i;
                         if (nameLen >= 2 && (j >= n || /[，。、；：！？.,;:!?\s]/.test(text[j]))) {
-                            result.push('<span class="tag">[姓名]</span>');
-                            i = j; continue;
+                            var candidate = text.substring(i, j);
+                            var blacklist = [
+            // 时/单
+            '时间','时代','时期','时空','时光','时尚','小时','及时','有时','平时','暂时','当时','临时','按时','不时',
+            '单位','单元','单独','单纯','单一','单调','单身','单薄','名单','菜单','账单','订单','清单','传单','保单','提单','存单','罚单','孤单','简单',
+            // 于
+            '于是','由于','终于','属于','关于','对于','位于','等于','大于','小于','至于','便于','基于',
+            // 马
+            '马上','马路','马虎',
+            // 方
+            '方面','方法','方式','方向','方便','方案',
+            // 花
+            '花钱','花费','花园','花样','花生',
+            // 白
+            '白色','白天','明白','空白',
+            // 安
+            '安全','安排','安装','安心','安静',
+            // 常
+            '常常','经常','通常','正常','非常',
+            // 乐
+            '快乐','音乐','乐观',
+            // 平
+            '平安','平时','平常','平台','平等',
+            // 和
+            '和平','和谐','温和','总和',
+            // 成
+            '成功','成为','完成','形成',
+            // 经
+            '经过','经验','经常','经济',
+            // 理
+            // 明
+            '明天','明白','明显',
+            // 高
+            '高兴','高度','高级',
+            // 万
+            '万物','万能','万一','万分',
+            // 江
+            '江湖','江苏','江西',
+            // 管
+            '管理','尽管','不管',
+            // 应
+            '应该','应用','应当',
+            // 干
+            '干部','干净','干燥',
+            // 黄
+            '黄色','黄瓜','黄金'
+        ];
+                            var isBlacklisted = false;
+                            for (var b = 0; b < blacklist.length; b++) {
+                                if (blacklist[b] === candidate) { isBlacklisted = true; break; }
+                            }
+                            if (!isBlacklisted) {
+                                result.push('<span class="tag">[姓名]</span>');
+                                i = j; continue;
+                            }
                         }
                     }
                 }
