@@ -23,7 +23,8 @@
         .result-box { background: #fafafa; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; min-height: 80px; white-space: pre-wrap; word-break: break-all; line-height: 1.7; font-size: 0.9rem; }
         .tag { background: #dbeafe; color: #1e40af; padding: 1px 5px; border-radius: 3px; font-weight: 600; font-size: 0.88em; }
         .stats { margin-top: 8px; font-size: 0.8rem; color: #666; }
-        .sample { color: #2563eb; cursor: pointer; text-decoration: underline; font-size: 0.8rem; font-weight: normal; }
+        .sample { color: #2563eb; cursor: pointer; text-decoration: underline; font-size: 0.8rem; font-weight: normal; margin-left: 12px; display: inline-block; }
+        .sample-group { display: flex; align-items: center; }
         .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(80px); background: #333; color: #fff; padding: 8px 18px; border-radius: 6px; opacity: 0; transition: all 0.3s; z-index: 100; font-size: 0.85rem; }
         .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     </style>
@@ -36,7 +37,7 @@
         <p class="subtitle">一键脱敏姓名/邮箱/电话/地址/账号/日期/URL/密钥/身份证等信息——纯本地运行，零上传</br><strong>注意：高敏感内容建议人工复核</strong></p>
 
         <div class="panel">
-            <div class="panel-title">输入文本 <span class="sample" id="btnSample">加载示例</span></div>
+            <div class="panel-title">输入文本 <span class="sample-group"><span class="sample" id="btnSample">加载示例</span> <span class="sample" id="btnHelp">使用说明</span></span></div>
             <textarea id="input" placeholder="在此粘贴需要脱敏的文本..."></textarea>
             <div class="btn-group">
                 <button class="btn btn-primary" id="btnProcess">开始脱敏</button>
@@ -337,9 +338,13 @@
         });
 
         $('btnSample').addEventListener('click', function() {
-    $('input').value = '更多工具尽在忆痕发布页：https://www.937788.xyz/\n\n客户信息登记表（以下信息均为虚构）\n登记日期： 2026年05月01日\n————————————\n【基本信息】\n客户姓名：周小忆\n联系电话：13866668888\n电子邮箱：yihen@example.com\n家庭住址：北京市海淀区中关村大街1号科技大厦A座1205室\n身份证号：11010119900307893X\n工作单位简称：北京市应急管理局\n工作单位地址：北京市通州区运河东大街57号院4号楼\n————————————\n【账户信息】\n客户编号：CUST-BJ-20260529-8847\n账户密钥：AKIAIOSFODNN7EXAMPLE\nAPI密钥：sk-live-51OoL9EXAMPLE7xJt2KpQr\n银行卡号：6222020200123456789\n开户行：中国工商银行北京海淀支行\n————————————\n【紧急联系人】\n联系人姓名：李芳\n关系：配偶\n电话：13955553333\n————————————\n【备注】\n该客户于 2026-05-01 申请开通VIP服务，授权码为 AUTH20268847ABCDEFGH，有效期至 2026-12-31。\n系统日志记录时间戳：2026-05-01 20:51:00';
+    $('input').value = '更多工具尽在忆痕发布页：https://www.937788.xyz/\n\n客户信息登记表（以下信息均为虚构）\n登记日期： 2026 年 05 月 01 日\n————————————\n【基本信息】\n客户姓名：周小忆\n联系电话：13866668888\n电子邮箱：yihen@example.com\n家庭住址：北京市海淀区中关村大街 1 号科技大厦 A 座 1205 室\n身份证号：11010119900307893X\n工作单位简称：北京市应急管理局\n工作单位地址：北京市通州区运河东大街 57 号院 4 号楼\n————————————\n【账户信息】\n客户编号：CUST-BJ-20260529-8847\n账户密钥：AKIAIOSFODNN7EXAMPLE\nAPI 密钥：sk-live-51OoL9EXAMPLE7xJt2KpQr\n银行卡号：6222020200123456789\n开户行：中国工商银行北京海淀支行\n————————————\n【紧急联系人】\n联系人姓名：李芳\n关系：配偶\n电话：13955553333\n————————————\n【备注】\n该客户于 2026-05-01 申请开通 VIP 服务，授权码为 AUTH20268847ABCDEFGH，有效期至 2026-12-31。\n系统日志记录时间戳：2026-05-01 20:51:00';
     $('output').innerHTML = mask($('input').value);
     $('stats').textContent = '文本长度 ' + $('input').value.length + ' 字符';
+    });
+
+    $('btnHelp').addEventListener('click', function() {
+        window.open('README.html', '_blank');
     });
 
         document.addEventListener('keydown', function(e) { if (e.ctrlKey && e.key === 'Enter') $('btnProcess').click(); });
